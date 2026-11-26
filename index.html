@@ -17,10 +17,22 @@
     --glass-border: rgba(255, 255, 255, 0.14);
     --spring: cubic-bezier(0.22, 1, 0.36, 1);
     --elastic: cubic-bezier(0.34, 1.45, 0.64, 1);
+    --card-size: clamp(248px, min(44vw, 56vh), 460px);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.34); }
   body {
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -49,32 +61,45 @@
     z-index: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 85% 65% at 50% 38%, transparent 18%, rgba(6, 6, 11, 0.32) 72%, rgba(5, 5, 9, 0.68) 100%),
-      linear-gradient(180deg, rgba(6, 6, 11, 0.34) 0%, transparent 24%, transparent 72%, rgba(5, 5, 10, 0.65) 100%);
+      radial-gradient(ellipse 85% 65% at 50% 45%, transparent 18%, rgba(6, 6, 11, 0.28) 72%, rgba(5, 5, 9, 0.66) 100%),
+      linear-gradient(180deg, rgba(6, 6, 11, 0.28) 0%, transparent 24%, transparent 74%, rgba(5, 5, 10, 0.65) 100%);
   }
 
-  /* ---- Page Shell & Choreographed Entrance ---- */
-  .page {
-    position: relative;
-    z-index: 1;
+  @keyframes stageReveal {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* ---- Scroll-Revealed Floating Topbar ---- */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: linear-gradient(180deg, rgba(8, 8, 14, 0.72) 0%, rgba(8, 8, 14, 0.28) 75%, transparent 100%);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+    opacity: 0;
+    transform: translateY(-16px);
+    pointer-events: none;
+    transition: opacity 0.45s var(--spring), transform 0.55s var(--spring);
+  }
+  body.is-scrolled .topbar {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .topbar-inner {
     max-width: 1140px;
     margin: 0 auto;
-    padding: 0 24px 72px;
-  }
-
-  @keyframes enterUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ---- Minimal Floating Topbar ---- */
-  .topbar {
+    padding: 16px 24px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 28px 0 12px;
-    animation: enterUp 0.85s var(--spring) both;
   }
   .brand {
     display: flex;
@@ -83,7 +108,7 @@
     min-width: 0;
   }
   .brand h1 {
-    font-size: clamp(20px, 3vw, 26px);
+    font-size: clamp(19px, 2.8vw, 24px);
     font-weight: 700;
     letter-spacing: -0.02em;
     white-space: nowrap;
@@ -100,8 +125,6 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.09);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     white-space: nowrap;
   }
 
@@ -163,15 +186,27 @@
     transform: scale(0.8);
   }
 
-  /* ---- Hero 3D Coverflow Stage ---- */
-  .hero {
-    padding-top: 8px;
-    animation: enterUp 0.95s var(--spring) 0.08s both;
+  /* ---- Full-Viewport Album Cover Stage + Title & Artist ---- */
+  .hero-screen {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    height: 100dvh;
+    width: 100%;
+    padding: 16px 0 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    overflow: hidden;
+    animation: stageReveal 0.9s var(--spring) both;
   }
   .stage {
     position: relative;
-    height: clamp(320px, 48vw, 445px);
-    perspective: 1350px;
+    width: 100%;
+    height: calc(var(--card-size) * 1.14);
+    perspective: 1550px;
     cursor: grab;
     touch-action: pan-y;
     user-select: none;
@@ -179,57 +214,84 @@
   }
   .stage.dragging { cursor: grabbing; }
 
+  .hero-info {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 0 20px;
+    max-width: min(640px, 92vw);
+  }
+  .hero-info h2 {
+    font-size: clamp(22px, 3.2vw, 31px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.22;
+    text-shadow: 0 4px 28px rgba(0, 0, 0, 0.42);
+  }
+  .hero-info p {
+    margin-top: 6px;
+    color: rgba(247, 247, 250, 0.72);
+    font-size: clamp(14px, 1.8vw, 16px);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.36);
+  }
+
   .card {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: clamp(216px, 34vw, 330px);
-    height: clamp(216px, 34vw, 330px);
-    margin-left: calc(clamp(216px, 34vw, 330px) / -2);
-    margin-top: calc(clamp(216px, 34vw, 330px) / -2);
-    border-radius: 20px;
+    width: var(--card-size);
+    height: var(--card-size);
+    margin-left: calc(var(--card-size) / -2);
+    margin-top: calc(var(--card-size) / -2);
+    border-radius: 22px;
     transform-style: preserve-3d;
     will-change: transform, opacity;
   }
+  .card.active { cursor: pointer; }
+  .stage.dragging .card.active { cursor: grabbing; }
   .card .ambient {
     position: absolute;
     inset: 8% 4% -12%;
-    border-radius: 28px;
-    background: radial-gradient(circle at 50% 45%, var(--card-glow, rgba(77, 142, 255, 0.5)), transparent 72%);
-    filter: blur(28px);
+    border-radius: 30px;
+    background: radial-gradient(circle at 50% 45%, var(--card-glow, rgba(77, 142, 255, 0.55)), transparent 72%);
+    filter: blur(34px);
     opacity: 0;
-    transform: translateZ(-26px) scale(0.95);
+    transform: translateZ(-28px) scale(0.95);
     transition: opacity 0.65s ease, transform 0.65s var(--spring);
     pointer-events: none;
   }
   .card.active .ambient {
-    opacity: 0.72;
-    transform: translateZ(-26px) scale(1.06);
+    opacity: 0.78;
+    transform: translateZ(-28px) scale(1.08);
   }
   .card .back {
     position: absolute;
     inset: 0;
-    border-radius: 20px;
-    transform: translateZ(-10px);
+    border-radius: 22px;
+    transform: translateZ(-11px);
     background: linear-gradient(145deg, #25252e, #0c0c12 65%);
-    box-shadow: 0 28px 65px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 255, 255, 0.09);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.09);
   }
   .card .face {
     position: absolute;
     inset: 0;
-    border-radius: 20px;
+    border-radius: 22px;
     overflow: hidden;
     transform: translateZ(1px);
     background: #14141c;
     box-shadow:
-      0 20px 50px rgba(0, 0, 0, 0.48),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      0 22px 54px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.2);
     transition: box-shadow 0.45s ease;
   }
   .card.active .face {
     box-shadow:
-      0 32px 84px rgba(0, 0, 0, 0.68),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.30);
+      0 36px 92px rgba(0, 0, 0, 0.72),
+      inset 0 1px 0 rgba(255, 255, 255, 0.36),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.26);
   }
   .card img {
     width: 100%;
@@ -241,7 +303,9 @@
     transition: opacity 0.45s ease, transform 0.55s var(--spring);
   }
   .card img.loaded { opacity: 1; }
-  .card.active:hover .face img.loaded { transform: scale(1.028); }
+  @media (hover: hover) {
+    .card.active:hover .face img.loaded { transform: scale(1.025); }
+  }
 
   .card .shine {
     position: absolute;
@@ -249,58 +313,43 @@
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.4s ease;
-    background: radial-gradient(circle at var(--mx, 50%) var(--my, 35%), rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.06) 34%, transparent 62%);
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 35%), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05) 34%, transparent 62%);
     mix-blend-mode: screen;
   }
   .card.active .shine { opacity: 0.92; }
 
-  .card .open-badge {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: rgba(16, 16, 22, 0.54);
-    border: 1px solid rgba(255, 255, 255, 0.26);
-    color: #fff;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    opacity: 0;
-    transform: scale(0.75) translateY(-4px);
-    transition: opacity 0.3s ease, transform 0.4s var(--elastic);
-    pointer-events: none;
+  /* ---- Below-the-fold Details & Collection (revealed on scroll) ---- */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 24px 72px;
   }
-  .card.active:hover .open-badge {
+  .details-dock {
+    padding-top: 12px;
+    opacity: 0;
+    transform: translateY(28px);
+    pointer-events: none;
+    transition: opacity 0.55s var(--spring), transform 0.65s var(--spring);
+  }
+  body.is-scrolled .details-dock {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
-  /* ---- Caption & Action ---- */
-  .caption {
+  /* ---- Dock Action & Meta ---- */
+  .dock-meta {
     text-align: center;
-    margin-top: 4px;
-    min-height: 108px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    animation: enterUp 0.95s var(--spring) 0.16s both;
   }
-  .caption h2 {
-    font-size: clamp(22px, 3.6vw, 31px);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    max-width: 92vw;
-    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
-  }
-  .caption p {
-    margin-top: 6px;
+  .dock-meta p {
     color: var(--text-sub);
     font-size: 13.5px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
   }
   .apple-cta {
     position: relative;
@@ -356,7 +405,6 @@
     gap: 16px;
     margin: 18px auto 0;
     max-width: 520px;
-    animation: enterUp 0.95s var(--spring) 0.24s both;
   }
   .nav-btn {
     width: 38px;
@@ -496,8 +544,7 @@
 
   /* ---- Collection Gallery ---- */
   .collection {
-    margin-top: 64px;
-    animation: enterUp 0.95s var(--spring) 0.3s both;
+    margin-top: 56px;
   }
   .collection-head {
     display: flex;
@@ -751,21 +798,26 @@
 
   /* ---- Responsive ---- */
   @media (max-width: 640px) {
+    :root {
+      --card-size: clamp(236px, min(72vw, 48vh), 340px);
+    }
     .page { padding: 0 16px 56px; }
-    .topbar { padding: 20px 0 8px; }
+    .topbar-inner { padding: 12px 16px 18px; }
     .brand-count { display: none; }
     .pill-btn { height: 32px; padding: 0 11px; font-size: 12px; }
-    .stage { height: clamp(280px, 72vw, 350px); }
+    .stage { height: calc(var(--card-size) * 1.14); }
+    .hero-screen { gap: 12px; }
     .deck-controls { gap: 10px; }
     .nav-btn { width: 34px; height: 34px; }
-    .collection { margin-top: 52px; }
+    .collection { margin-top: 46px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 12px; }
     footer { justify-content: center; text-align: center; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .topbar, .hero, .caption, .deck-controls, .collection { animation: none; }
+    .hero-screen { animation: none; }
+    .topbar, .details-dock { transition: opacity 0.2s ease; transform: none; }
     .eq-bars i { animation: none; transform: scaleY(0.55); }
     .item { opacity: 1; transform: none; }
   }
@@ -775,8 +827,8 @@
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="ambient-scrim" aria-hidden="true"></div>
 
-<div class="page">
-  <header class="topbar">
+<header class="topbar">
+  <div class="topbar-inner">
     <div class="brand">
       <h1>Khalil 的音乐收藏</h1>
       <span class="brand-count" id="brandCount">33 张</span>
@@ -797,47 +849,52 @@
         <span id="fluidLabel">流光</span>
       </button>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main>
-    <section class="hero" aria-label="专辑 3D 展台">
-      <div class="stage" id="stage"></div>
+<main>
+  <section class="hero-screen" aria-label="专辑 3D 展台">
+    <div class="stage" id="stage"></div>
+    <div class="hero-info">
+      <h2 id="capTitle"></h2>
+      <p id="capArtist"></p>
+    </div>
+  </section>
 
-      <div class="caption">
-        <h2 id="capTitle"></h2>
-        <p id="capMeta"></p>
-        <a class="apple-cta" id="capLink" href="#" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M19.5 3.2 9.4 5.3a1.4 1.4 0 0 0-1.1 1.4v9.6a3.4 3.4 0 1 0 1.8 3V9.6l8.6-1.8v6.5a3.4 3.4 0 1 0 1.8 3V4.4a1.1 1.1 0 0 0-1-1.2Z"/>
-          </svg>
-          <span>在 Apple Music 收听</span>
-          <span aria-hidden="true">↗</span>
-        </a>
-      </div>
+  <div class="page details-dock">
+    <div class="dock-meta">
+      <p id="capMeta"></p>
+      <a class="apple-cta" id="capLink" href="#" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M19.5 3.2 9.4 5.3a1.4 1.4 0 0 0-1.1 1.4v9.6a3.4 3.4 0 1 0 1.8 3V9.6l8.6-1.8v6.5a3.4 3.4 0 1 0 1.8 3V4.4a1.1 1.1 0 0 0-1-1.2Z"/>
+        </svg>
+        <span>在 Apple Music 收听</span>
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
 
-      <div class="deck-controls">
-        <button class="nav-btn" id="prev" type="button" aria-label="上一张">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+    <div class="deck-controls">
+      <button class="nav-btn" id="prev" type="button" aria-label="上一张">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
 
-        <div class="scrubber" id="scrubber" role="slider" tabindex="0" aria-label="快速浏览专辑进度" aria-valuemin="1" aria-valuemax="33" aria-valuenow="1">
-          <div class="scrubber-tip" id="scrubberTip"></div>
-          <div class="scrubber-track">
-            <div class="scrubber-fill" id="scrubberFill"></div>
-            <div class="scrubber-ticks" id="scrubberTicks"></div>
-          </div>
-          <div class="scrubber-thumb" id="scrubberThumb"></div>
+      <div class="scrubber" id="scrubber" role="slider" tabindex="0" aria-label="快速浏览专辑进度" aria-valuemin="1" aria-valuemax="33" aria-valuenow="1">
+        <div class="scrubber-tip" id="scrubberTip"></div>
+        <div class="scrubber-track">
+          <div class="scrubber-fill" id="scrubberFill"></div>
+          <div class="scrubber-ticks" id="scrubberTicks"></div>
         </div>
-
-        <button class="nav-btn" id="next" type="button" aria-label="下一张">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        </button>
+        <div class="scrubber-thumb" id="scrubberThumb"></div>
       </div>
-    </section>
+
+      <button class="nav-btn" id="next" type="button" aria-label="下一张">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
 
     <section class="collection" aria-label="全部专辑列表">
       <div class="collection-head">
@@ -851,16 +908,16 @@
       </div>
       <div id="grid"></div>
     </section>
-  </main>
 
-  <footer>
-    <span>khalil.hidns.co · 个人音乐收藏</span>
-    <div class="footer-links">
-      <a href="https://wisvent.cn/" target="_blank" rel="noopener noreferrer">二元观测 · 博客</a>
-      <a href="https://github.com/gzx5418" target="_blank" rel="noopener noreferrer">GitHub</a>
-    </div>
-  </footer>
-</div>
+    <footer>
+      <span>khalil.hidns.co · 个人音乐收藏</span>
+      <div class="footer-links">
+        <a href="https://wisvent.cn/" target="_blank" rel="noopener noreferrer">二元观测 · 博客</a>
+        <a href="https://github.com/gzx5418" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </footer>
+  </div>
+</main>
 
 <script>
 const ALBUMS = [
@@ -951,29 +1008,24 @@ function hslToRgb01(h, s, l) {
 }
 
 /**
- * Expands two raw album hex colors into a vibrant 4-stop Apple Music mesh palette:
- * [primaryGlow, secondaryGlow, auroraHighlight, deepShadowBase].
+ * Expands two raw album hex colors into a faithful 4-stop fallback palette
+ * without shifting hues across color families (e.g., keeping pure blue pure blue).
  */
 function buildApplePalette(colors) {
   const hslA = rgbToHsl(...hexToRgb01(colors[0]));
   const hslB = rgbToHsl(...hexToRgb01(colors[1] || colors[0]));
-  const nearNeutral = hslA[1] < 0.16 && hslB[1] < 0.16;
+  const nearNeutral = hslA[1] < 0.14 && hslB[1] < 0.14;
 
-  // Give neutral/monochrome covers subtle luminous cool-indigo / warm-silver depth
-  const hA = nearNeutral ? (hslB[1] > 0.05 ? hslB[0] : 0.62) : (hslA[1] >= 0.14 ? hslA[0] : hslB[0]);
-  let hB = nearNeutral ? hA + 0.11 : (hslB[1] >= 0.14 ? hslB[0] : hA + 0.14);
+  const hA = hslA[1] >= 0.1 ? hslA[0] : hslB[0];
+  const hB = hslB[1] >= 0.1 ? hslB[0] : hA;
 
-  // Separate hues gently if both base colors are too close on the color wheel
-  const hueDiff = Math.abs(((hB - hA + 1.5) % 1) - 0.5);
-  if (hueDiff < 0.08) hB = hA + 0.12;
+  const sA = nearNeutral ? 0.14 : clamp01(Math.max(hslA[1] * 1.18, 0.38));
+  const sB = nearNeutral ? 0.16 : clamp01(Math.max(hslB[1] * 1.18, 0.36));
 
-  const sA = nearNeutral ? 0.38 : clamp01(Math.max(hslA[1] * 1.28, 0.52));
-  const sB = nearNeutral ? 0.44 : clamp01(Math.max(hslB[1] * 1.24, 0.48));
-
-  const primary = hslToRgb01(hA, Math.min(sA, 0.88), clamp01(0.46 + (hslA[2] - 0.5) * 0.2));
-  const secondary = hslToRgb01(hB, Math.min(sB, 0.85), clamp01(0.44 + (hslB[2] - 0.5) * 0.22));
-  const highlight = hslToRgb01(hA + 0.07, nearNeutral ? 0.52 : Math.min(Math.max(sA, sB) * 1.1, 0.92), 0.62);
-  const deep = hslToRgb01(hB - 0.05, nearNeutral ? 0.42 : Math.min(Math.max(sA, sB) * 0.95, 0.78), 0.19);
+  const primary = hslToRgb01(hA, Math.min(sA, 0.88), clamp01(0.45 + (hslA[2] - 0.5) * 0.22));
+  const secondary = hslToRgb01(hB, Math.min(sB, 0.86), clamp01(0.42 + (hslB[2] - 0.5) * 0.24));
+  const highlight = hslToRgb01(hA, nearNeutral ? 0.18 : Math.min(Math.max(sA, sB) * 1.05, 0.92), 0.62);
+  const deep = hslToRgb01(hB, nearNeutral ? 0.14 : Math.min(Math.max(sA, sB) * 0.92, 0.78), 0.18);
 
   return [primary, secondary, highlight, deep];
 }
@@ -981,7 +1033,7 @@ function buildApplePalette(colors) {
 const PALETTES = ALBUMS.map(a => buildApplePalette(a.colors));
 
 /* =====================================================================
-   2. Apple Music Fluid Aura Engine (WebGL Shader + Canvas 2D Fallback)
+   2. Apple Music Fluid Aura Engine (Live Cover Texture Mesh + Pixel Extraction)
    ===================================================================== */
 const fx = document.getElementById('fx');
 let fluidPaused = reducedMotion;
@@ -992,17 +1044,84 @@ let fluidTime = 0;
 let lastRenderTime = 0;
 let mouseN = { x: 0, y: 0, tx: 0, ty: 0 };
 
-function setFluidTarget(index, boostPulse = true) {
-  fluidTarget = PALETTES[index];
-  if (boostPulse && !fluidPaused) {
-    fluidPulse = Math.min(1, fluidPulse + 0.85);
+// Offscreen canvases for 2-step box downsampling of real album covers
+const sampleMidCanvas = document.createElement('canvas');
+sampleMidCanvas.width = 48;
+sampleMidCanvas.height = 48;
+const sampleMidCtx = sampleMidCanvas.getContext('2d', { willReadFrequently: false });
+
+const sampleMeshCanvas = document.createElement('canvas');
+sampleMeshCanvas.width = 16;
+sampleMeshCanvas.height = 16;
+const sampleMeshCtx = sampleMeshCanvas.getContext('2d', { willReadFrequently: true });
+
+/**
+ * Extracts dominant, secondary, highlight, and deep shadow colors directly from
+ * a downsampled 16x16 real cover image using hue-bucket weighting.
+ */
+function extractPaletteFromMesh(data) {
+  const bins = Array.from({ length: 12 }, () => ({ w: 0, r: 0, g: 0, b: 0 }));
+  let totalW = 0, sumR = 0, sumG = 0, sumB = 0;
+  let bestBright = { score: -1, rgb: [0.55, 0.55, 0.6] };
+  let bestDark = { score: -1, rgb: [0.08, 0.08, 0.12] };
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+    const [h, s, l] = rgbToHsl(r, g, b);
+    const w = (0.22 + s * 1.8) * (0.22 + Math.sin(l * Math.PI) * 0.9);
+    const binIdx = Math.min(11, Math.floor(((h % 1 + 1) % 1) * 12));
+    const bin = bins[binIdx];
+    bin.w += w;
+    bin.r += r * w;
+    bin.g += g * w;
+    bin.b += b * w;
+
+    totalW += w;
+    sumR += r * w;
+    sumG += g * w;
+    sumB += b * w;
+
+    const brightScore = l * (0.4 + s * 1.4);
+    if (l < 0.93 && brightScore > bestBright.score) {
+      bestBright = { score: brightScore, rgb: [r, g, b] };
+    }
+    const darkScore = (1 - l) * (0.4 + s * 0.9);
+    if (l > 0.04 && darkScore > bestDark.score) {
+      bestDark = { score: darkScore, rgb: [r, g, b] };
+    }
   }
+
+  const sorted = bins
+    .map((b, idx) => ({ idx, w: b.w, rgb: b.w > 0 ? [b.r / b.w, b.g / b.w, b.b / b.w] : [0, 0, 0] }))
+    .filter(b => b.w > 0)
+    .sort((a, b) => b.w - a.w);
+
+  const avgRgb = totalW > 0 ? [sumR / totalW, sumG / totalW, sumB / totalW] : [0.25, 0.25, 0.3];
+  const primary = sorted[0]?.rgb || avgRgb;
+  const secondaryBin = sorted.find(b => {
+    const diff = Math.abs(b.idx - sorted[0].idx);
+    return Math.min(diff, 12 - diff) >= 2 && b.w > sorted[0].w * 0.14;
+  });
+
+  let secondary;
+  if (secondaryBin) {
+    secondary = secondaryBin.rgb;
+  } else {
+    const [ph, ps, pl] = rgbToHsl(...primary);
+    secondary = hslToRgb01(ph, clamp01(ps * 0.94), pl > 0.42 ? Math.max(0.16, pl - 0.22) : Math.min(0.68, pl + 0.22));
+  }
+
+  // Keep deep base dark enough so foreground white typography and fluid light streaks pop
+  const [dh, ds, dl] = rgbToHsl(...bestDark.rgb);
+  const deep = hslToRgb01(dh, clamp01(ds * 1.05), Math.min(0.14, Math.max(0.05, dl * 0.65)));
+
+  return [primary, secondary, bestBright.rgb, deep];
 }
 
 const FluidEngine = (() => {
   function create2DFallback() {
     const ctx = fx.getContext('2d');
-    if (!ctx) return { render() {} };
+    if (!ctx) return { render() {}, setAlbum() {}, updateTexture() {}, isReadyMix: () => true, stepMix() {} };
     let cw = 200, ch = 120;
     function resize2D() {
       cw = Math.max(180, Math.round(innerWidth * 0.25));
@@ -1013,6 +1132,10 @@ const FluidEngine = (() => {
     resize2D();
     addEventListener('resize', resize2D);
     return {
+      setAlbum() {},
+      updateTexture() {},
+      isReadyMix: () => true,
+      stepMix() {},
       render(t, cols, mouse, pulse) {
         const toRgba = (c, a) => `rgba(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)},${a})`;
         ctx.globalCompositeOperation = 'source-over';
@@ -1020,14 +1143,14 @@ const FluidEngine = (() => {
         ctx.fillRect(0, 0, cw, ch);
         ctx.globalCompositeOperation = 'screen';
         const blobs = [
-          [0.25 + 0.22 * Math.sin(t * 0.23) + mouse.x * 0.06, 0.30 + 0.20 * Math.cos(t * 0.19), cols[0], 0.72 + pulse * 0.08],
+          [0.25 + 0.22 * Math.sin(t * 0.23) + mouse.x * 0.06, 0.30 + 0.20 * Math.cos(t * 0.19), cols[0], 0.75 + pulse * 0.08],
           [0.74 + 0.22 * Math.cos(t * 0.21) - mouse.x * 0.05, 0.34 + 0.24 * Math.sin(t * 0.27), cols[1], 0.68],
           [0.48 + 0.26 * Math.sin(t * 0.17 + 1.4), 0.72 + 0.18 * Math.cos(t * 0.22), cols[2], 0.62 + pulse * 0.1],
         ];
         for (const [bx, by, col, rad] of blobs) {
           const r = Math.max(cw, ch) * rad;
           const g = ctx.createRadialGradient(bx * cw, by * ch, 0, bx * cw, by * ch, r);
-          g.addColorStop(0, toRgba(col, 0.78));
+          g.addColorStop(0, toRgba(col, 0.8));
           g.addColorStop(0.55, toRgba(col, 0.28));
           g.addColorStop(1, toRgba(col, 0));
           ctx.fillStyle = g;
@@ -1074,7 +1197,6 @@ const FluidEngine = (() => {
       return fract((p3.x + p3.y) * p3.z);
     }
 
-    // Elliptical organic weight for silky Apple Music mesh blobs
     float blobWeight(vec2 p, vec2 center, float angle, vec2 scale, float spread) {
       vec2 d = rot2(angle) * (p - center);
       d /= scale;
@@ -1089,57 +1211,68 @@ const FluidEngine = (() => {
     void main() {
       float aspect = uRes.x / max(uRes.y, 1.0);
       vec2 p = (vUv - 0.5) * vec2(min(aspect, 1.48), 1.0);
-      float t = uTime * 0.26;
+      float t = uTime * 0.30;
 
-      // Multi-layered domain warping creates fluid silk currents
+      // Multi-stage organic fluid warping for Apple Music liquid light ribbons
       vec2 wp = p;
-      wp += 0.24 * vec2(
-        sin(p.y * 2.15 + t * 1.15) + 0.45 * cos(p.x * 1.9 - t * 0.85),
-        cos(p.x * 2.05 - t * 0.95) + 0.45 * sin(p.y * 2.3 + t * 0.78)
+      wp += 0.28 * vec2(
+        sin(p.y * 2.2 + t * 1.18) + 0.48 * cos(p.x * 1.85 - t * 0.88),
+        cos(p.x * 2.1 - t * 0.96) + 0.48 * sin(p.y * 2.35 + t * 0.82)
       );
-      wp += 0.11 * rot2(t * 0.35) * vec2(
-        sin(wp.y * 3.1 - wp.x * 1.7 + t * 1.3),
-        cos(wp.x * 2.8 + wp.y * 1.9 - t * 1.1)
+      wp += 0.14 * rot2(t * 0.36) * vec2(
+        sin(wp.y * 3.0 - wp.x * 1.75 + t * 1.35),
+        cos(wp.x * 2.7 + wp.y * 1.95 - t * 1.12)
+      );
+      wp += 0.06 * vec2(
+        cos(wp.x * 4.2 + t * 1.6),
+        sin(wp.y * 4.1 - t * 1.4)
       );
 
-      // Convert colors to linear light before blending to avoid muddy gray midtones
       vec3 c0 = pow(max(uC0, 0.0), vec3(2.2));
       vec3 c1 = pow(max(uC1, 0.0), vec3(2.2));
       vec3 c2 = pow(max(uC2, 0.0), vec3(2.2));
       vec3 c3 = pow(max(uC3, 0.0), vec3(2.2));
 
-      vec2 m = uMouse * 0.10;
-      float swell = 1.0 + uPulse * 0.14;
+      vec2 m = uMouse * 0.11;
+      float swell = 1.0 + uPulse * 0.16;
 
-      vec2 o0 = vec2(-0.36 + 0.28 * sin(t * 0.85), -0.18 + 0.26 * cos(t * 0.67)) + m * 0.7;
-      vec2 o1 = vec2( 0.38 + 0.26 * cos(t * 0.74),  0.14 + 0.28 * sin(t * 0.91)) - m * 0.5;
-      vec2 o2 = vec2( 0.05 + 0.34 * sin(t * 0.62 + 1.9), -0.05 + 0.25 * cos(t * 0.82 + 0.8)) + m;
-      vec2 o3 = vec2(-0.18 + 0.25 * cos(t * 0.58 + 3.1),  0.34 + 0.22 * sin(t * 0.71 + 1.4));
+      vec2 o0 = vec2(-0.34 + 0.30 * sin(t * 0.88), -0.18 + 0.28 * cos(t * 0.69)) + m * 0.7;
+      vec2 o1 = vec2( 0.36 + 0.28 * cos(t * 0.76),  0.16 + 0.30 * sin(t * 0.93)) - m * 0.5;
+      vec2 o2 = vec2( 0.04 + 0.36 * sin(t * 0.64 + 1.9), -0.04 + 0.27 * cos(t * 0.84 + 0.8)) + m;
+      vec2 o3 = vec2(-0.16 + 0.26 * cos(t * 0.59 + 3.1),  0.32 + 0.24 * sin(t * 0.72 + 1.4));
 
-      float w0 = blobWeight(wp, o0,  t * 0.32, vec2(0.95, 0.62) * swell, 2.25);
-      float w1 = blobWeight(wp, o1, -t * 0.28, vec2(0.88, 0.65) * swell, 2.15);
-      float w2 = blobWeight(wp, o2,  t * 0.45, vec2(1.05, 0.44) * swell, 2.75);
-      float w3 = blobWeight(wp, o3, -t * 0.22, vec2(0.92, 0.72), 1.95);
-      float wBase = 0.22;
+      float w0 = blobWeight(wp, o0,  t * 0.34, vec2(0.92, 0.56) * swell, 2.35);
+      float w1 = blobWeight(wp, o1, -t * 0.30, vec2(0.86, 0.60) * swell, 2.25);
+      float w2 = blobWeight(wp, o2,  t * 0.48, vec2(1.04, 0.38) * swell, 2.95);
+      float w3 = blobWeight(wp, o3, -t * 0.24, vec2(0.90, 0.68), 2.05);
+      float wBase = 0.28;
 
       float wSum = w0 + w1 + w2 + w3 + wBase;
-      vec3 col = (c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3 + (c3 * 0.42) * wBase) / wSum;
+      vec3 col = (c0 * w0 + c1 * w1 + c2 * w2 + c3 * w3 + (c3 * 0.35) * wBase) / wSum;
 
-      // Subtle iridescent aurora ribbon flowing across the center field
-      float ribbonWave = max(sin(wp.x * 2.4 + wp.y * 1.9 - t * 1.15) * 0.5 + 0.5, 0.0);
-      float ribbon = pow(ribbonWave, 3.2) * (0.16 + uPulse * 0.18);
-      col += mix(c2, c0, 0.35) * ribbon;
+      // Dual additive optical light ribbons create genuine glowing fluid caustics
+      float silk1 = pow(max(sin(wp.x * 2.5 + wp.y * 1.8 - t * 1.15) * 0.5 + 0.5, 0.0), 3.0);
+      float silk2 = pow(max(cos(wp.y * 2.25 - wp.x * 2.05 + t * 0.92) * 0.5 + 0.5, 0.0), 3.6);
+      col += mix(c2, c0, 0.32) * silk1 * (0.28 + uPulse * 0.22);
+      col += mix(c2, c1, 0.45) * silk2 * (0.22 + uPulse * 0.16);
+      col += c2 * (w2 * (0.18 + uPulse * 0.16));
 
-      // Soft central stage bloom & natural outer vignette to keep white UI legible
+      // Keep bright white covers lush & deep while amplifying rich color contrast
+      float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      col = mix(vec3(lum), col, 1.18);
+      col = max(col, 0.0);
+      float lumCompress = 1.0 / (1.0 + lum * 1.25);
+      col *= mix(0.88, 1.16, lumCompress);
+
+      // Central stage radiance + outer vignette
       float dist = length(p * vec2(0.82, 1.0));
-      float stageLight = mix(1.08 + uPulse * 0.12, 0.56, smoothstep(0.18, 0.98, dist));
+      float stageLight = mix(1.12 + uPulse * 0.14, 0.50, smoothstep(0.18, 0.98, dist));
       col *= stageLight;
 
-      col = acesTone(max(col, 0.0) * 1.18);
+      col = acesTone(col * 1.16);
       col = pow(max(col, 0.0), vec3(1.0 / 2.2));
 
-      // Subtle screen-space dithering eliminates 8-bit dark gradient banding
-      float grain = (hash12(gl_FragCoord.xy + fract(uTime) * 37.0) - 0.5) * 0.014;
+      float grain = (hash12(gl_FragCoord.xy + fract(uTime) * 37.0) - 0.5) * 0.013;
       gl_FragColor = vec4(clamp(col + grain, 0.0, 1.0), 1.0);
     }
   `;
@@ -1182,7 +1315,6 @@ const FluidEngine = (() => {
   };
 
   function resizeGL() {
-    // 0.45 DPR scale keeps fluid shaders ultra-smooth at 60/120fps while CSS upscaling adds soft sheen
     const scale = Math.min(window.devicePixelRatio || 1, 1.5) * 0.45;
     const w = Math.max(240, Math.round(innerWidth * scale));
     const h = Math.max(180, Math.round(innerHeight * scale));
@@ -1195,6 +1327,10 @@ const FluidEngine = (() => {
   addEventListener('resize', resizeGL);
 
   return {
+    setAlbum() {},
+    updateTexture() {},
+    isReadyMix: () => true,
+    stepMix() {},
     render(t, cols, mouse, pulse) {
       gl.uniform1f(loc.time, t);
       gl.uniform2f(loc.mouse, mouse.x, mouse.y);
@@ -1208,11 +1344,19 @@ const FluidEngine = (() => {
   };
 })();
 
+function setFluidTarget(index, boostPulse = true) {
+  fluidTarget = PALETTES[index];
+  if (boostPulse && !fluidPaused) {
+    fluidPulse = Math.min(1, fluidPulse + 0.85);
+  }
+}
+
 /* =====================================================================
    3. DOM References & Carousel Setup
    ===================================================================== */
 const stage = document.getElementById('stage');
 const capTitle = document.getElementById('capTitle');
+const capArtist = document.getElementById('capArtist');
 const capMeta = document.getElementById('capMeta');
 const capLink = document.getElementById('capLink');
 const prevBtn = document.getElementById('prev');
@@ -1232,27 +1376,75 @@ const shuffleBtn = document.getElementById('shuffleBtn');
 
 document.getElementById('brandCount').textContent = `${N} 张专辑`;
 
-let cardGap = 310;
+let cardGap = 360;
 function computeLayoutMetrics() {
   const sw = stage.clientWidth || innerWidth;
-  cardGap = Math.max(178, Math.min(340, sw * 0.34));
+  const cardW = (typeof cards !== 'undefined' && cards[0]?.clientWidth) || Math.min(500, sw * 0.46);
+  cardGap = Math.max(cardW * 0.90, Math.min(480, sw * 0.33));
 }
-computeLayoutMetrics();
 addEventListener('resize', () => {
   computeLayoutMetrics();
   positionTabPill();
   lastRenderedPos = NaN;
 });
 
-function createFadeImg(src, alt, lazy = false) {
+function createFadeImg(src, alt, lazy = false, onReady = null) {
   const img = document.createElement('img');
   img.alt = alt;
   img.draggable = false;
   if (lazy) img.loading = 'lazy';
-  img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+  img.crossOrigin = 'anonymous';
+  img.addEventListener('load', () => {
+    img.classList.add('loaded');
+    if (onReady) onReady(img);
+  }, { once: true });
+  img.addEventListener('error', () => {
+    if (img.hasAttribute('crossorigin')) {
+      img.removeAttribute('crossorigin');
+      img.src = src;
+    }
+  }, { once: true });
   img.src = src;
-  if (img.complete) img.classList.add('loaded');
+  if (img.complete && img.naturalWidth > 0) {
+    img.classList.add('loaded');
+    if (onReady) onReady(img);
+  }
   return img;
+}
+
+const ambientEls = [];
+function applyAccentForActive(index) {
+  const [r, g, b] = PALETTES[index][0].map(v => Math.round(v * 255));
+  document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+  document.documentElement.style.setProperty('--accent', `rgb(${r}, ${g}, ${b})`);
+}
+
+function extractFromCover(index, img) {
+  try {
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) return;
+    // Crop 4% edge margin to avoid white/black border artifacts, then 2-step downsample
+    const padX = iw * 0.04, padY = ih * 0.04;
+    sampleMidCtx.clearRect(0, 0, 48, 48);
+    sampleMidCtx.drawImage(img, padX, padY, iw - padX * 2, ih - padY * 2, 0, 0, 48, 48);
+    sampleMeshCtx.clearRect(0, 0, 16, 16);
+    sampleMeshCtx.drawImage(sampleMidCanvas, 0, 0, 16, 16);
+
+    const imgData = sampleMeshCtx.getImageData(0, 0, 16, 16).data;
+    PALETTES[index] = extractPaletteFromMesh(imgData);
+
+    if (ambientEls[index]) {
+      const [pr, pg, pb] = PALETTES[index][0].map(v => Math.round(v * 255));
+      ambientEls[index].style.setProperty('--card-glow', `rgba(${pr}, ${pg}, ${pb}, 0.68)`);
+    }
+    if (index === active) {
+      fluidTarget = PALETTES[index];
+      applyAccentForActive(index);
+      lastRenderTime = 0;
+    }
+  } catch {
+    // Ignore CORS taint errors gracefully; fallback palette stays active
+  }
 }
 
 const cards = ALBUMS.map((album, i) => {
@@ -1262,23 +1454,19 @@ const cards = ALBUMS.map((album, i) => {
   const ambient = document.createElement('div');
   ambient.className = 'ambient';
   const [pr, pg, pb] = PALETTES[i][0].map(v => Math.round(v * 255));
-  ambient.style.setProperty('--card-glow', `rgba(${pr}, ${pg}, ${pb}, 0.62)`);
+  ambient.style.setProperty('--card-glow', `rgba(${pr}, ${pg}, ${pb}, 0.66)`);
+  ambientEls[i] = ambient;
 
   const back = document.createElement('div');
   back.className = 'back';
 
   const face = document.createElement('div');
   face.className = 'face';
-  face.appendChild(createFadeImg(album.cover, `${album.title} 封面`));
+  face.appendChild(createFadeImg(album.cover, `${album.title} 封面`, false, img => extractFromCover(i, img)));
 
   const shine = document.createElement('div');
   shine.className = 'shine';
   face.appendChild(shine);
-
-  const openBadge = document.createElement('div');
-  openBadge.className = 'open-badge';
-  openBadge.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`;
-  face.appendChild(openBadge);
 
   card.append(ambient, back, face);
   card.addEventListener('click', () => {
@@ -1292,6 +1480,7 @@ const cards = ALBUMS.map((album, i) => {
   stage.appendChild(card);
   return card;
 });
+computeLayoutMetrics();
 
 // Add artist-boundary ticks on the scrubber rail
 const artists = [...new Set(ALBUMS.map(a => a.artist))];
@@ -1353,7 +1542,7 @@ function buildAlbumCard(album, index) {
   item.append(coverBox, meta);
   item.addEventListener('click', () => {
     goTo(index);
-    stage.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+    window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
   });
   itemByIndex[index] = item;
   return item;
@@ -1434,7 +1623,7 @@ function positionTabPill() {
 /* =====================================================================
    5. Spring Coverflow Physics, Kinetic Typography & Scrubber
    ===================================================================== */
-const MAX_ROT = 27, MAX_DEPTH = 148, MIN_SCALE = 0.86;
+const MAX_ROT = 25, MAX_DEPTH = 225, MIN_SCALE = 0.54;
 let pos = 0, target = 0, velocity = 0, active = -1;
 let tiltRX = 2.5, tiltRY = -5, tiltTargetRX = 2.5, tiltTargetRY = -5, floatY = 0;
 let dragging = false, dragMoved = false, dragStartX = 0, dragStartPos = 0, lastX = 0, lastT = 0;
@@ -1444,7 +1633,7 @@ let lastRenderedPos = NaN, lastRenderedFloat = NaN, lastRenderedTilt = NaN;
 function clampIndex(v) { return Math.max(0, Math.min(N - 1, v)); }
 function goTo(i) { target = clampIndex(i); }
 
-function animateCaptionChange(titleEl, metaEl) {
+function animateCaptionChange(titleEl, artistEl, metaEl) {
   if (reducedMotion || !titleEl.animate) return;
   const frames = [
     { opacity: 0.15, transform: 'translateY(10px)', filter: 'blur(6px)' },
@@ -1452,7 +1641,8 @@ function animateCaptionChange(titleEl, metaEl) {
   ];
   const opts = { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' };
   titleEl.animate(frames, opts);
-  metaEl.animate(frames, { ...opts, duration: 460 });
+  artistEl.animate(frames, { ...opts, duration: 450 });
+  metaEl.animate(frames, { ...opts, duration: 480 });
 }
 
 function setActive(i) {
@@ -1462,18 +1652,17 @@ function setActive(i) {
   const album = ALBUMS[i];
 
   capTitle.textContent = album.title;
-  capMeta.textContent = `${album.artist} · ${album.year} · ${String(i + 1).padStart(2, '0')} / ${N}`;
+  capArtist.textContent = album.artist;
+  capMeta.textContent = `${album.year} · 第 ${String(i + 1).padStart(2, '0')} / ${N} 张`;
   capLink.href = album.link;
-  if (!firstRun) animateCaptionChange(capTitle, capMeta);
+  if (!firstRun) animateCaptionChange(capTitle, capArtist, capMeta);
 
   prevBtn.disabled = i === 0;
   nextBtn.disabled = i === N - 1;
   scrubber.setAttribute('aria-valuenow', String(i + 1));
 
   setFluidTarget(i, !firstRun);
-  const [r, g, b] = PALETTES[i][0].map(v => Math.round(v * 255));
-  document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
-  document.documentElement.style.setProperty('--accent', `rgb(${r}, ${g}, ${b})`);
+  applyAccentForActive(i);
 
   itemByIndex.forEach((el, idx) => {
     if (el) el.classList.toggle('is-current', idx === i);
@@ -1503,7 +1692,7 @@ function renderStage() {
   cards.forEach((card, i) => {
     const off = i - pos;
     const ao = Math.abs(off);
-    if (ao > 3.6) {
+    if (ao > 3.2) {
       if (card.style.opacity !== '0') {
         card.style.opacity = '0';
         card.style.pointerEvents = 'none';
@@ -1511,8 +1700,10 @@ function renderStage() {
       return;
     }
     const rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, off * -MAX_ROT));
-    const depth = Math.min(MAX_DEPTH, ao * MAX_DEPTH);
-    const scale = Math.max(MIN_SCALE, 1 - ao * 0.085);
+    const depth = Math.min(MAX_DEPTH * 1.4, ao * MAX_DEPTH);
+    const scale = ao < 1
+      ? 1.06 - ao * 0.30
+      : Math.max(MIN_SCALE, 0.76 - (ao - 1) * 0.16);
     const activeBlend = Math.max(0, 1 - ao * 1.9);
 
     card.style.transform =
@@ -1523,7 +1714,7 @@ function renderStage() {
       `rotateX(${(tiltRX * activeBlend).toFixed(2)}deg) ` +
       `scale(${scale.toFixed(4)})`;
 
-    const op = ao > 3.2 ? 0 : 1 - Math.max(0, ao - 2.1) * 0.55;
+    const op = ao > 2.9 ? 0 : Math.max(0, 1 - ao * 0.31);
     card.style.opacity = op.toFixed(3);
     card.style.pointerEvents = op > 0.05 ? 'auto' : 'none';
     card.style.zIndex = String(100 - Math.round(ao * 10));
@@ -1709,23 +1900,17 @@ scrubber.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(target - 1); }
 });
 
-// Smart wheel handling: supports horizontal trackpad swipes & lets vertical page scroll pass at ends
+// Horizontal trackpad wheel switches albums; vertical wheel always scrolls the page smoothly
 let wheelLock = 0;
 stage.addEventListener('wheel', e => {
   const absX = Math.abs(e.deltaX), absY = Math.abs(e.deltaY);
-  const delta = absX > absY ? e.deltaX : e.deltaY;
-  const dir = delta > 0 ? 1 : -1;
-
-  // Let vertical page scroll flow smoothly into the collection when at album boundaries
-  if (absY >= absX && ((dir > 0 && target === N - 1) || (dir < 0 && target === 0))) {
-    return;
-  }
+  if (absX <= absY || absX < 6) return;
 
   e.preventDefault();
   const now = performance.now();
-  if (now - wheelLock < 210 || Math.abs(delta) < 4) return;
+  if (now - wheelLock < 210) return;
   wheelLock = now;
-  goTo(target + dir);
+  goTo(target + (e.deltaX > 0 ? 1 : -1));
 }, { passive: false });
 
 function triggerButtonPop(btn) {
@@ -1780,10 +1965,28 @@ shuffleBtn.addEventListener('click', () => {
   goTo(nextIdx);
 });
 
+// Pure cover-only entry at top; reveal topbar and details dock when scrolling down
+let isPageScrolled = false;
+function updateScrollState() {
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  const next = isPageScrolled ? y > 12 : y > 24;
+  if (next === isPageScrolled) return;
+  isPageScrolled = next;
+  document.body.classList.toggle('is-scrolled', isPageScrolled);
+  if (isPageScrolled) requestAnimationFrame(positionTabPill);
+}
+addEventListener('scroll', updateScrollState, { passive: true });
+updateScrollState();
+
 // Initialize view
 renderGrid('全部');
-addEventListener('load', positionTabPill);
+addEventListener('load', () => {
+  computeLayoutMetrics();
+  positionTabPill();
+  lastRenderedPos = NaN;
+});
 requestAnimationFrame(() => {
+  computeLayoutMetrics();
   positionTabPill();
   renderStage();
   requestAnimationFrame(tick);

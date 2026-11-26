@@ -25,13 +25,13 @@
   header p b { color: rgba(242,242,245,.9); }
 
   /* ---- carousel ---- */
-  .stage { position: relative; height: clamp(380px, 62vw, 560px); perspective: 1200px; margin-top: 8px; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .stage { position: relative; height: clamp(430px, 66vw, 620px); perspective: 1200px; margin-top: 8px; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
   .stage.dragging { cursor: grabbing; }
   .card {
     position: absolute; left: 50%; top: 50%;
-    width: clamp(220px, 34vw, 300px); height: clamp(220px, 34vw, 300px);
-    margin-left: calc(clamp(220px, 34vw, 300px) / -2);
-    margin-top: calc(clamp(220px, 34vw, 300px) / -2);
+    width: clamp(260px, 38vw, 360px); height: clamp(260px, 38vw, 360px);
+    margin-left: calc(clamp(260px, 38vw, 360px) / -2);
+    margin-top: calc(clamp(260px, 38vw, 360px) / -2);
     border-radius: 18px; transform-style: preserve-3d;
     box-shadow: 0 24px 60px rgba(0,0,0,.55); will-change: transform, opacity;
   }
@@ -154,7 +154,7 @@ const ALBUMS = [
   { title: "特別 - Single", artist: "鶴 The Crane", year: "2025", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/b6/ae/4e/b6ae4edb-3175-be8c-7a38-b658ad7067cf/193017171105.jpg/600x600bb.jpg", link: "https://music.apple.com/cn/album/x/1802554619", colors: ["#e0e0e0", "#a08060"] },
 ];
 const N = ALBUMS.length;
-const MAX_ROT = 28, MAX_DEPTH = 140, MIN_SCALE = 0.92, CARD_GAP = 300;
+const MAX_ROT = 28, MAX_DEPTH = 140, MIN_SCALE = 0.92, CARD_GAP = 340;
 const stage = document.getElementById('stage');
 const dotsEl = document.getElementById('dots');
 const capTitle = document.getElementById('capTitle');

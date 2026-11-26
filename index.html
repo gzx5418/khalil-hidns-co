@@ -3,29 +3,259 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Khalil · 高智翔</title>
+<title>Khalil 的音乐收藏 · khalil.hidns.co</title>
 <style>
-  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f7f9fc; color: #1f2d3d; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
-  .card { background: #fff; max-width: 560px; width: 90%; margin: 40px auto; padding: 48px 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(31, 45, 61, 0.08); text-align: center; }
-  h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: 1px; }
-  .sub { color: #5a6b7d; font-size: 15px; margin: 0 0 24px; }
-  p { color: #3c4a5a; line-height: 1.8; font-size: 15px; }
-  .links { margin-top: 28px; }
-  .links a { display: inline-block; margin: 0 10px; padding: 10px 20px; border-radius: 999px; background: #2563eb; color: #fff; text-decoration: none; font-size: 14px; }
-  .links a.ghost { background: #eef2f7; color: #2563eb; }
-  .foot { margin-top: 32px; font-size: 12px; color: #9aa8b8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #0b0b10; color: #f2f2f5; overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* ---- gradient background layers (crossfade on card change) ---- */
+  .bg-layer { position: fixed; inset: 0; z-index: 0; opacity: 0; transition: opacity 1s ease; pointer-events: none; }
+  .bg-layer.on { opacity: 1; }
+  .bg-layer .blob1, .bg-layer .blob2 { position: absolute; border-radius: 50%; filter: blur(90px); }
+  .bg-layer .blob1 { width: 55vmax; height: 55vmax; left: -12vmax; top: -14vmax; opacity: .55; }
+  .bg-layer .blob2 { width: 48vmax; height: 48vmax; right: -10vmax; bottom: -16vmax; opacity: .45; }
+  .bg-layer::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 30%, rgba(11,11,16,.55) 100%); }
+
+  .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 20px 64px; }
+  header { text-align: center; padding: 56px 0 8px; }
+  header h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; letter-spacing: 2px; }
+  header p { margin-top: 10px; color: rgba(242,242,245,.65); font-size: 15px; letter-spacing: 1px; }
+  header p b { color: rgba(242,242,245,.9); }
+
+  /* ---- carousel ---- */
+  .stage { position: relative; height: clamp(380px, 62vw, 560px); perspective: 1200px; margin-top: 8px; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .stage.dragging { cursor: grabbing; }
+  .card {
+    position: absolute; left: 50%; top: 50%;
+    width: clamp(220px, 34vw, 300px); height: clamp(220px, 34vw, 300px);
+    margin-left: calc(clamp(220px, 34vw, 300px) / -2);
+    margin-top: calc(clamp(220px, 34vw, 300px) / -2);
+    border-radius: 18px; overflow: hidden; transform-style: preserve-3d;
+    box-shadow: 0 24px 60px rgba(0,0,0,.55); will-change: transform, opacity;
+  }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .card.active { box-shadow: 0 30px 80px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.14); }
+
+  .caption { text-align: center; min-height: 92px; margin-top: 6px; }
+  .caption h2 { font-size: clamp(22px, 4vw, 30px); font-weight: 700; }
+  .caption p { margin-top: 6px; color: rgba(242,242,245,.65); font-size: 14px; letter-spacing: 1px; }
+  .caption a { display: inline-block; margin-top: 12px; padding: 8px 18px; border-radius: 999px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; text-decoration: none; font-size: 13px; backdrop-filter: blur(6px); }
+  .caption a:hover { background: rgba(255,255,255,.22); }
+
+  .controls { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 10px; }
+  .controls button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; font-size: 18px; cursor: pointer; backdrop-filter: blur(6px); }
+  .controls button:hover { background: rgba(255,255,255,.2); }
+  .dots { display: flex; gap: 8px; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.3); cursor: pointer; transition: all .3s; }
+  .dots i.on { background: #fff; transform: scale(1.35); }
+  .hint { text-align: center; margin-top: 14px; font-size: 12px; color: rgba(242,242,245,.4); letter-spacing: 1px; }
+
+  /* ---- collection grid ---- */
+  .collection { margin-top: 72px; }
+  .collection h3 { font-size: 20px; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; }
+  .collection > p { color: rgba(242,242,245,.55); font-size: 13px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; }
+  .item { cursor: pointer; border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); transition: transform .25s, border-color .25s; }
+  .item:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.25); }
+  .item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  .item .meta { padding: 10px 12px 12px; }
+  .item .meta b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .meta span { font-size: 12px; color: rgba(242,242,245,.55); }
+  footer { margin-top: 56px; text-align: center; font-size: 12px; color: rgba(242,242,245,.35); line-height: 1.9; }
+  footer a { color: rgba(242,242,245,.55); }
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>Khalil · 高智翔</h1>
-  <p class="sub">计算机科学与技术 · 武汉纺织大学</p>
-  <p>专注计算机视觉、图像处理与色彩科学，研究织物自动化色彩分析与光谱重建。</p>
-  <div class="links">
-    <a href="https://wisvent.cn/">二元观测 · 博客</a>
-    <a class="ghost" href="https://github.com/gzx5418">GitHub</a>
+<div class="bg-layer on" id="bgA"><div class="blob1"></div><div class="blob2"></div></div>
+<div class="bg-layer" id="bgB"><div class="blob1"></div><div class="blob2"></div></div>
+
+<div class="page">
+  <header>
+    <h1>Khalil 的音乐收藏</h1>
+    <p><b>孫燕姿</b> · 专辑收藏 12 张 · 拖动、滚轮或方向键切换，背景会跟着封面变色</p>
+  </header>
+
+  <div class="stage" id="stage"></div>
+
+  <div class="caption">
+    <h2 id="capTitle"></h2>
+    <p id="capMeta"></p>
+    <a id="capLink" href="#" target="_blank" rel="noopener">在 Apple Music 中打开 ↗</a>
   </div>
-  <p class="foot">khalil.hidns.co · 欢迎来访</p>
+
+  <div class="controls">
+    <button id="prev" aria-label="上一张">‹</button>
+    <div class="dots" id="dots"></div>
+    <button id="next" aria-label="下一张">›</button>
+  </div>
+  <p class="hint">拖动封面 · 滚动鼠标滚轮 · 按 ← → 键 · 点击当前封面打开 Apple Music</p>
+
+  <section class="collection">
+    <h3>全部专辑</h3>
+    <p>点击任意一张，回到上面的轮播 · 封面与链接来自 Apple Music</p>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <footer>
+    khalil.hidns.co · 个人音乐收藏<br>
+    更多收藏陆续加入 · <a href="https://wisvent.cn/">二元观测 · 博客</a> · <a href="https://github.com/gzx5418">GitHub</a>
+  </footer>
 </div>
+
+<script>
+const ALBUMS = [
+  { title: "同名專輯", year: "2000", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/0b/cb/70/0bcb70e1-c991-261e-eb64-be53ca569d0b/dj.kzpfbjxe.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E5%90%8C%E5%90%8D%E5%B0%88%E8%BC%AF-remastered/990152978?uo=4", colors: ["#0040a0", "#c0a060"] },
+  { title: "我要的幸福", year: "2000", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music/0f/99/a7/mzi.zsimusvk.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E6%88%91%E8%A6%81%E7%9A%84%E5%B9%B8%E7%A6%8F/298837646?uo=4", colors: ["#e0e0c0", "#a0a060"] },
+  { title: "風箏", year: "2001", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/7b/e7/26/7be7268a-8048-fe91-9f70-e6f0ef401372/mzi.uwhxxsbl.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E9%A2%A8%E7%AE%8F/297994281?uo=4", colors: ["#202000", "#e0a060"] },
+  { title: "Leave", year: "2002", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/2d/f9/4f/2df94fc4-f2ec-b472-aaeb-825d61e362fa/809274724267.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/leave/541825411?uo=4", colors: ["#e0a080", "#e0e0c0"] },
+  { title: "未完成", year: "2003", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/24/fc/1d/24fc1d3e-b37f-968f-3d21-880edc8f8d79/mzi.ybwydvjn.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E6%9C%AA%E5%AE%8C%E6%88%90/255920420?uo=4", colors: ["#a06020", "#402000"] },
+  { title: "The Moment", year: "2003", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/8a/91/d7/8a91d731-cdb1-01b5-17a9-c88cf66d6e01/5050466855725.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/the-moment/541856819?uo=4", colors: ["#a0a0a0", "#c08060"] },
+  { title: "Stefanie", year: "2004", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music/94/d7/fc/mzi.itefxkul.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E5%AD%AB%E7%87%95%E5%A7%BFstefanie%E5%90%8C%E5%90%8D%E5%B0%88%E8%BC%AF/255921035?uo=4", colors: ["#604020", "#c0a0c0"] },
+  { title: "完美的一天", year: "2005", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/18/4d/d9/184dd9e0-5c01-13ec-eba3-2ec44a7da5e1/mzi.tftomyty.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E5%AE%8C%E7%BE%8E%E7%9A%84%E4%B8%80%E5%A4%A9/255921008?uo=4", colors: ["#e0e0e0", "#204060"] },
+  { title: "逆光", year: "2007", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/39/8e/7d/398e7d64-1877-03ab-17cb-460943429bc0/825646246939.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E9%80%86%E5%85%89/905226289?uo=4", colors: ["#a04020", "#602000"] },
+  { title: "是時候", year: "2011", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/b6/45/aa/b645aaff-ed1e-71f3-a117-dc2373bfa37f/00602488893596.rgb.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E6%98%AF%E6%99%82%E5%80%99/1442430575?uo=4", colors: ["#606060", "#e0e0e0"] },
+  { title: "克卜勒", year: "2014", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/81/dc/36/81dc3656-ae44-4641-7aa4-485e48fae68b/14UMGIM00262.rgb.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/%E5%85%8B%E5%8D%9C%E5%8B%92/1443147411?uo=4", colors: ["#e0e0e0", "#404060"] },
+  { title: "跳舞的梵谷", year: "2017", cover: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/11/43/34/1143346f-1d34-a812-738d-41b941c49fa3/00602567102038.rgb.jpg/600x600bb.jpg", link: "https://music.apple.com/tw/album/no-13-%E4%BD%9C%E5%93%81-%E8%B7%B3%E8%88%9E%E7%9A%84%E6%A2%B5%E8%B0%B7/1440901467?uo=4", colors: ["#802020", "#400020"] }
+];
+const N = ALBUMS.length;
+const MAX_ROT = 28, MAX_DEPTH = 140, MIN_SCALE = 0.92, CARD_GAP = 300;
+const stage = document.getElementById('stage');
+const dotsEl = document.getElementById('dots');
+const capTitle = document.getElementById('capTitle');
+const capMeta = document.getElementById('capMeta');
+const capLink = document.getElementById('capLink');
+const bgA = document.getElementById('bgA');
+const bgB = document.getElementById('bgB');
+let bgFlip = false;
+
+// build cards + dots
+const cards = ALBUMS.map((a, i) => {
+  const d = document.createElement('div');
+  d.className = 'card';
+  const img = document.createElement('img');
+  img.src = a.cover; img.alt = a.title + ' 封面'; img.draggable = false;
+  d.appendChild(img);
+  d.addEventListener('click', () => {
+    if (Math.abs(pos - i) < 0.5) window.open(a.link, '_blank');
+    else goTo(i);
+  });
+  stage.appendChild(d);
+  const dot = document.createElement('i');
+  dot.addEventListener('click', () => goTo(i));
+  dotsEl.appendChild(dot);
+  return d;
+});
+const dots = [...dotsEl.children];
+
+// build grid
+const grid = document.getElementById('grid');
+ALBUMS.forEach((a, i) => {
+  const it = document.createElement('div');
+  it.className = 'item';
+  it.innerHTML = `<img src="${a.cover}" alt="${a.title} 封面" loading="lazy"><div class="meta"><b>${a.title}</b><span>孫燕姿 · ${a.year}</span></div>`;
+  it.addEventListener('click', () => { goTo(i); document.querySelector('.stage').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  grid.appendChild(it);
+});
+
+// state + physics (friction 0.9, like the original's frictionFactor)
+let pos = 0, target = 0, velocity = 0, active = -1;
+let dragging = false, dragStartX = 0, dragStartPos = 0, lastX = 0, lastT = 0;
+function clamp(v) { return Math.max(0, Math.min(N - 1, v)); }
+function goTo(i) { target = clamp(i); }
+
+function paintBg(layer, colors) {
+  layer.querySelector('.blob1').style.background = `radial-gradient(circle, ${colors[0]} 0%, transparent 70%)`;
+  layer.querySelector('.blob2').style.background = `radial-gradient(circle, ${colors[1] || colors[0]} 0%, transparent 70%)`;
+}
+function setActive(i) {
+  if (i === active) return;
+  active = i;
+  const a = ALBUMS[i];
+  capTitle.textContent = a.title;
+  capMeta.textContent = `孫燕姿 · ${a.year} · 第 ${i + 1} / ${N} 张`;
+  capLink.href = a.link;
+  dots.forEach((d, j) => d.classList.toggle('on', j === i));
+  const show = bgFlip ? bgA : bgB, hide = bgFlip ? bgB : bgA;
+  paintBg(show, a.colors);
+  show.classList.add('on'); hide.classList.remove('on');
+  bgFlip = !bgFlip;
+}
+function render() {
+  cards.forEach((card, i) => {
+    const off = i - pos;
+    const ao = Math.abs(off);
+    const rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, off * -MAX_ROT));
+    const depth = Math.min(MAX_DEPTH, ao * MAX_DEPTH);
+    const scale = Math.max(MIN_SCALE, 1 - ao * 0.08);
+    card.style.transform = `translateX(${off * CARD_GAP}px) translateZ(${-depth}px) rotateY(${rot}deg) scale(${scale})`;
+    card.style.opacity = ao > 3.2 ? 0 : 1 - Math.max(0, ao - 2.2) * 0.55;
+    card.style.zIndex = String(100 - Math.round(ao * 10));
+    card.classList.toggle('active', Math.round(pos) === i && ao < 0.5);
+  });
+  setActive(clamp(Math.round(pos)));
+}
+function tick() {
+  if (!dragging) {
+    velocity *= 0.9;
+    pos += velocity;
+    pos += (target - pos) * 0.14;
+    if (Math.abs(target - pos) < 0.002 && Math.abs(velocity) < 0.002) pos = target;
+    if (pos < 0) { pos = 0; velocity = 0; target = 0; }
+    if (pos > N - 1) { pos = N - 1; velocity = 0; target = N - 1; }
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+
+// drag
+stage.addEventListener('pointerdown', e => {
+  dragging = true; stage.classList.add('dragging');
+  dragStartX = lastX = e.clientX; dragStartPos = pos; velocity = 0; lastT = performance.now();
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - dragStartX;
+  const now = performance.now();
+  const instV = (e.clientX - lastX) / Math.max(1, now - lastT);
+  lastX = e.clientX; lastT = now;
+  pos = clamp(dragStartPos - dx / 200);
+  velocity = -instV / 200 * 16;
+});
+function endDrag() {
+  if (!dragging) return;
+  dragging = false; stage.classList.remove('dragging');
+  target = clamp(Math.round(pos - velocity * 6));
+  velocity *= 0.5;
+}
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+
+// wheel (throttled)
+let wheelLock = 0;
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const now = performance.now();
+  if (now - wheelLock < 260) return;
+  wheelLock = now;
+  goTo(Math.round(pos) + (e.deltaY > 0 ? 1 : -1));
+}, { passive: false });
+
+// keyboard
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') goTo(Math.round(pos) + 1);
+  if (e.key === 'ArrowLeft') goTo(Math.round(pos) - 1);
+});
+document.getElementById('prev').addEventListener('click', () => goTo(Math.round(pos) - 1));
+document.getElementById('next').addEventListener('click', () => goTo(Math.round(pos) + 1));
+
+paintBg(bgA, ALBUMS[0].colors);
+render();
+tick();
+</script>
 </body>
 </html>

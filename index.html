@@ -12,13 +12,11 @@
     background: #0b0b10; color: #f2f2f5; overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
   }
-  /* ---- gradient background layers (crossfade on card change) ---- */
-  .bg-layer { position: fixed; inset: 0; z-index: 0; opacity: 0; transition: opacity 1s ease; pointer-events: none; }
-  .bg-layer.on { opacity: 1; }
-  .bg-layer .blob1, .bg-layer .blob2 { position: absolute; border-radius: 50%; filter: blur(90px); }
-  .bg-layer .blob1 { width: 55vmax; height: 55vmax; left: -12vmax; top: -14vmax; opacity: .55; }
-  .bg-layer .blob2 { width: 48vmax; height: 48vmax; right: -10vmax; bottom: -16vmax; opacity: .45; }
-  .bg-layer::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 30%, rgba(11,11,16,.55) 100%); }
+  /* ---- fluid background (canvas color field, colors follow the active cover) ---- */
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; filter: saturate(1.06); }
+  .vignette { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, transparent 20%, rgba(5,5,9,.38) 78%, rgba(5,5,9,.62) 100%),
+                linear-gradient(0deg, rgba(5,5,9,.45), transparent 26%, transparent 80%, rgba(5,5,9,.25)); }
 
   .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 20px 64px; }
   header { text-align: center; padding: 56px 0 8px; }
@@ -34,11 +32,22 @@
     width: clamp(220px, 34vw, 300px); height: clamp(220px, 34vw, 300px);
     margin-left: calc(clamp(220px, 34vw, 300px) / -2);
     margin-top: calc(clamp(220px, 34vw, 300px) / -2);
-    border-radius: 18px; overflow: hidden; transform-style: preserve-3d;
+    border-radius: 18px; transform-style: preserve-3d;
     box-shadow: 0 24px 60px rgba(0,0,0,.55); will-change: transform, opacity;
   }
   .card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .card.active { box-shadow: 0 30px 80px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.14); }
+  .card .back { position: absolute; inset: 0; border-radius: 18px; transform: translateZ(-9px);
+    background: linear-gradient(135deg, #2b2b34, #101016 60%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.10), 0 0 28px var(--glow, rgba(0,0,0,0)); }
+  .card .face { position: absolute; inset: 0; border-radius: 18px; overflow: hidden; transform: translateZ(1px);
+    background: #121218; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .card .shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
+    background: radial-gradient(ellipse at var(--mx, 50%) var(--my, 40%), rgba(255,255,255,.30), transparent 55%);
+    mix-blend-mode: screen; }
+  .card.active .shine { opacity: 1; }
+  .linkbtn { background: none; border: none; color: rgba(242,242,245,.55); cursor: pointer; font: inherit; text-decoration: underline; padding: 0; }
+  .linkbtn:hover { color: rgba(242,242,245,.85); }
 
   .caption { text-align: center; min-height: 92px; margin-top: 6px; }
   .caption h2 { font-size: clamp(22px, 4vw, 30px); font-weight: 700; }
@@ -72,8 +81,8 @@
 </style>
 </head>
 <body>
-<div class="bg-layer on" id="bgA"><div class="blob1"></div><div class="blob2"></div></div>
-<div class="bg-layer" id="bgB"><div class="blob1"></div><div class="blob2"></div></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
 
 <div class="page">
   <header>
@@ -94,7 +103,7 @@
     <div class="dots" id="dots"></div>
     <button id="next" aria-label="下一张">›</button>
   </div>
-  <p class="hint">拖动封面 · 滚动鼠标滚轮 · 按 ← → 键 · 点击当前封面打开 Apple Music</p>
+  <p class="hint">拖动封面 · 滚动鼠标滚轮 · 按 ← → 键 · 点击当前封面打开 Apple Music · <button class="linkbtn" id="fluidToggle">暂停流体背景</button></p>
 
   <section class="collection">
     <h3>全部专辑</h3>
@@ -151,17 +160,81 @@ const dotsEl = document.getElementById('dots');
 const capTitle = document.getElementById('capTitle');
 const capMeta = document.getElementById('capMeta');
 const capLink = document.getElementById('capLink');
-const bgA = document.getElementById('bgA');
-const bgB = document.getElementById('bgB');
-let bgFlip = false;
+/* ---- fluid background engine (low-res warped color field, upscaled by CSS) ---- */
+const fx = document.getElementById('fx');
+const fctx = fx.getContext('2d');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let fluidPaused = reducedMotion;
+function hexRgb(h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function normC(c) { const m = Math.max(...c, 1); const f = 168 / m; return c.map(v => Math.round(v * f)); }
+function albumPalette(a) {
+  const c1 = normC(hexRgb(a.colors[0]));
+  const c2 = normC(hexRgb(a.colors[1] || a.colors[0]));
+  const mix = c1.map((v, i) => Math.round((v + c2[i]) / 2));
+  return [c1, c2, mix];
+}
+let fTarget = albumPalette(ALBUMS[0]);
+let fColors = fTarget.map(c => c.slice());
+let fTime = 0, fLast = 0, fDrawn = 0, fFrame = null, fX = [], fY = [], FW = 144, FH = 100;
+function fluidResize() {
+  FW = 144;
+  FH = Math.max(76, Math.min(200, Math.round(FW * innerHeight / innerWidth)));
+  fx.width = FW; fx.height = FH;
+  fFrame = fctx.createImageData(FW, FH);
+  fX = Array.from({ length: FW }, (_, i) => (i + .5) / FW * 2 - 1);
+  fY = Array.from({ length: FH }, (_, i) => (i + .5) / FH * 2 - 1);
+  fDrawn = 0;
+}
+addEventListener('resize', fluidResize);
+fluidResize();
+function setFluidTarget(i) { fTarget = albumPalette(ALBUMS[i]); }
+function fluidRender(now) {
+  const dt = Math.min(50, now - (fLast || now) || 16); fLast = now;
+  if (!fluidPaused) fTime += dt * .001;
+  const changing = fColors.some((c, i) => c.some((v, j) => Math.abs(v - fTarget[i][j]) > .35));
+  if (now - fDrawn < 32 || (fluidPaused && !changing && fDrawn)) return;
+  fDrawn = now;
+  fColors = fColors.map((c, i) => c.map((v, j) => v + (fTarget[i][j] - v) * .065));
+  const t = fTime * .115, A = fColors[0], B = fColors[1], C = fColors[2];
+  const mix = A.map((v, i) => (v + B[i]) * .5), deep = B.map((v, i) => v * .62 + C[i] * .38);
+  const nodes = [
+    [-.82 + .34 * Math.sin(t), -.72 + .31 * Math.cos(t * .73), A, .78],
+    [.77 + .34 * Math.cos(t * .82), -.58 + .39 * Math.sin(t * .61), B, .66],
+    [-.55 + .38 * Math.cos(t * .71 + 2), .76 + .27 * Math.sin(t * .89 + 1), C, .77],
+    [.77 + .26 * Math.sin(t * .94 + 2), .64 + .32 * Math.cos(t * .74), mix, .54],
+    [.03 + .28 * Math.sin(t * .65 + 3), .13 + .35 * Math.cos(t * .63 + 1), deep, .42]
+  ];
+  const data = fFrame.data; let k = 0;
+  for (let y = 0; y < FH; y++) { const py = fY[y];
+    for (let x = 0; x < FW; x++) { const px = fX[x];
+      const u = px + .27 * Math.sin(py * 2.35 + t * 1.23) + .12 * Math.sin(px * 2.2 - py * 2.1 - t * .83);
+      const v = py + .24 * Math.cos(px * 2.17 - t * .93) + .13 * Math.sin(py * 2.6 + px * 1.5 + t * .72);
+      let rr = 0, gg = 0, bb = 0, total = .085;
+      for (const n of nodes) { const dx = u - n[0], dy = v - n[1], w = Math.exp(-(dx * dx + dy * dy) / (n[3] * n[3]) * 1.85); total += w; rr += n[2][0] * w; gg += n[2][1] * w; bb += n[2][2] * w; }
+      const shape = .60 + .12 * Math.sin(u * 2.6 + v * 1.8 + t * .82) + .065 * Math.cos(v * 3.3 - u * 1.5 - t * .52);
+      const shade = (.83 - .12 * py) * shape;
+      data[k++] = Math.min(255, 5 + rr / total * shade);
+      data[k++] = Math.min(255, 5 + gg / total * shade);
+      data[k++] = Math.min(255, 7 + bb / total * shade);
+      data[k++] = 255;
+    }
+  }
+  fctx.putImageData(fFrame, 0, 0);
+}
+/* ---- 3D tilt + float state for the active card ---- */
+let tiltRX = 3, tiltRY = -6, tiltTargetRX = 3, tiltTargetRY = -6, floatY = 0;
 
 // build cards + dots
 const cards = ALBUMS.map((a, i) => {
   const d = document.createElement('div');
   d.className = 'card';
+  const back = document.createElement('div'); back.className = 'back'; d.appendChild(back);
+  const face = document.createElement('div'); face.className = 'face';
   const img = document.createElement('img');
   img.src = a.cover; img.alt = a.title + ' 封面'; img.draggable = false;
-  d.appendChild(img);
+  face.appendChild(img);
+  const shine = document.createElement('div'); shine.className = 'shine'; face.appendChild(shine);
+  d.appendChild(face);
   d.addEventListener('click', () => {
     if (Math.abs(pos - i) < 0.5) window.open(a.link, '_blank');
     else goTo(i);
@@ -201,10 +274,6 @@ let dragging = false, dragStartX = 0, dragStartPos = 0, lastX = 0, lastT = 0;
 function clamp(v) { return Math.max(0, Math.min(N - 1, v)); }
 function goTo(i) { target = clamp(i); }
 
-function paintBg(layer, colors) {
-  layer.querySelector('.blob1').style.background = `radial-gradient(circle, ${colors[0]} 0%, transparent 70%)`;
-  layer.querySelector('.blob2').style.background = `radial-gradient(circle, ${colors[1] || colors[0]} 0%, transparent 70%)`;
-}
 function setActive(i) {
   if (i === active) return;
   active = i;
@@ -213,10 +282,8 @@ function setActive(i) {
   capMeta.textContent = `${a.artist} · ${a.year} · 第 ${i + 1} / ${N} 张`;
   capLink.href = a.link;
   dots.forEach((d, j) => d.classList.toggle('on', j === i));
-  const show = bgFlip ? bgA : bgB, hide = bgFlip ? bgB : bgA;
-  paintBg(show, a.colors);
-  show.classList.add('on'); hide.classList.remove('on');
-  bgFlip = !bgFlip;
+  setFluidTarget(i);
+  document.documentElement.style.setProperty('--glow', a.colors[0] + '66');
 }
 function render() {
   cards.forEach((card, i) => {
@@ -225,7 +292,8 @@ function render() {
     const rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, off * -MAX_ROT));
     const depth = Math.min(MAX_DEPTH, ao * MAX_DEPTH);
     const scale = Math.max(MIN_SCALE, 1 - ao * 0.08);
-    card.style.transform = `translateX(${off * CARD_GAP}px) translateZ(${-depth}px) rotateY(${rot}deg) scale(${scale})`;
+    const tb = Math.max(0, 1 - ao * 2);
+    card.style.transform = `translateX(${off * CARD_GAP}px) translateY(${(floatY * tb).toFixed(1)}px) translateZ(${-depth}px) rotateY(${rot + tiltRY * tb}deg) rotateX(${tiltRX * tb}deg) scale(${scale})`;
     card.style.opacity = ao > 3.2 ? 0 : 1 - Math.max(0, ao - 2.2) * 0.55;
     card.style.zIndex = String(100 - Math.round(ao * 10));
     card.classList.toggle('active', Math.round(pos) === i && ao < 0.5);
@@ -233,6 +301,11 @@ function render() {
   setActive(clamp(Math.round(pos)));
 }
 function tick() {
+  const nowT = performance.now();
+  tiltRX += (tiltTargetRX - tiltRX) * 0.08;
+  tiltRY += (tiltTargetRY - tiltRY) * 0.08;
+  floatY = (fluidPaused || reducedMotion) ? 0 : Math.sin(nowT * Math.PI * 2 / 8000) * -7;
+  fluidRender(nowT);
   if (!dragging) {
     velocity *= 0.9;
     pos += velocity;
@@ -269,6 +342,28 @@ function endDrag() {
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
 
+// 3D tilt: pointer over the stage tilts the active card; shine follows the pointer
+stage.addEventListener('pointermove', e => {
+  if (dragging) { tiltTargetRX = 0; tiltTargetRY = 0; return; }
+  const r = stage.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  tiltTargetRY = (x - 0.5) * 22;
+  tiltTargetRX = (0.5 - y) * 18;
+  const ai = clamp(Math.round(pos));
+  const cr = cards[ai].getBoundingClientRect();
+  if (cr.width > 0) {
+    cards[ai].style.setProperty('--mx', ((e.clientX - cr.left) / cr.width * 100) + '%');
+    cards[ai].style.setProperty('--my', ((e.clientY - cr.top) / cr.height * 100) + '%');
+  }
+});
+stage.addEventListener('pointerleave', () => { tiltTargetRX = 3; tiltTargetRY = -6; });
+
+// fluid background pause/play
+const fluidToggle = document.getElementById('fluidToggle');
+function syncFluidToggle() { fluidToggle.textContent = fluidPaused ? '播放流体背景' : '暂停流体背景'; }
+fluidToggle.addEventListener('click', () => { fluidPaused = !fluidPaused; syncFluidToggle(); });
+syncFluidToggle();
+
 // wheel (throttled)
 let wheelLock = 0;
 stage.addEventListener('wheel', e => {
@@ -287,7 +382,6 @@ window.addEventListener('keydown', e => {
 document.getElementById('prev').addEventListener('click', () => goTo(Math.round(pos) - 1));
 document.getElementById('next').addEventListener('click', () => goTo(Math.round(pos) + 1));
 
-paintBg(bgA, ALBUMS[0].colors);
 render();
 tick();
 </script>
